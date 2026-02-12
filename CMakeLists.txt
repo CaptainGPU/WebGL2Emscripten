@@ -1,0 +1,25 @@
+cmake_minimum_required(VERSION 3.10)
+project(EmscriptenWebGL2)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+add_executable(my_web_app main.cpp)
+
+set_target_properties(my_web_app PROPERTIES 
+    OUTPUT_NAME "index"
+    SUFFIX ".html"
+)
+
+target_link_options(my_web_app PRIVATE
+    "-sFORCE_FILESYSTEM=1"
+    "-sUSE_WEBGL2=1"
+    "-sFULL_ES3=1"
+    "-sWASM=1"
+    "--shell-file=${CMAKE_SOURCE_DIR}/shell_minimal.html"
+    "--preload-file=${CMAKE_SOURCE_DIR}/texture.png@texture.png"
+    "--preload-file=${CMAKE_SOURCE_DIR}/shader.vert@shader.vert"
+    "--preload-file=${CMAKE_SOURCE_DIR}/shader.frag@shader.frag"
+)
+
+target_compile_definitions(my_web_app PRIVATE EMSCRIPTEN)

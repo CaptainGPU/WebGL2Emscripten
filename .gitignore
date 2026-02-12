@@ -1,0 +1,21 @@
+# temporary folders
+build/
+bin/
+obj/
+
+# compiled files
+index.html
+index.js
+index.wasm
+index.data
+
+# vscode settings
+.vscode/
+*.code-workspace
+
+# temporary files
+.DS_Store
+Thumbs.db
+*.o
+*.a
+*.exe

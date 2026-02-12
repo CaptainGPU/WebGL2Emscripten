@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Emscripten + WebGL 2.0</title>
+    <style>
+        body { font-family: sans-serif; margin: 0; background-color: #222; color: white; overflow: hidden; }
+        /* Канвас на весь екран */
+        #canvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: black;
+            border: none;
+            display: block;
+        }
+        #status { position: fixed; top: 10px; left: 10px; z-index: 10; color: #0f0; }
+    </style>
+</head>
+<body>
+
+    <div id="status">Завантаження...</div>
+    
+    <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+
+    <script type='text/javascript'>
+      var statusElement = document.getElementById('status');
+
+      var Module = {
+        preRun: [],
+        postRun: [],
+        print: (function() {
+          return function(text) {
+            if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+            console.log(text);
+          };
+        })(),
+        // Пов'язуємо елемент канвасу з об'єктом Module
+        canvas: (function() {
+          var canvas = document.getElementById('canvas');
+          // Це допомагає обробляти втрату контексту WebGL
+          canvas.addEventListener("webglcontextlost", function(e) { 
+            alert('WebGL context lost. You will need to reload the page.'); 
+            e.preventDefault(); 
+          }, false);
+          return canvas;
+        })(),
+        setStatus: function(text) {
+          if (!Module.setStatus.last) Module.setStatus.last = { time: Date.now(), text: '' };
+          if (text === Module.setStatus.last.text) return;
+          statusElement.innerHTML = text;
+        },
+        totalDependencies: 0,
+        monitorRunDependencies: function(left) {
+          this.totalDependencies = Math.max(this.totalDependencies, left);
+          Module.setStatus(left ? 'Підготовка... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'Все готово!');
+        }
+      };
+      Module.setStatus('Завантаження WASM...');
+      window.onerror = function() {
+        Module.setStatus('Сталася помилка, дивіться консоль браузера.');
+        statusElement.style.color = 'red';
+      };
+    </script>
+    
+    {{{ SCRIPT }}}
+</body>
+</html>
