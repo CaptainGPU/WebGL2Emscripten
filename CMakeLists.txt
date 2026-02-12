@@ -20,6 +20,8 @@ target_link_options(my_web_app PRIVATE
     "--preload-file=${CMAKE_SOURCE_DIR}/texture.png@texture.png"
     "--preload-file=${CMAKE_SOURCE_DIR}/shader.vert@shader.vert"
     "--preload-file=${CMAKE_SOURCE_DIR}/shader.frag@shader.frag"
+    "--preload-file=${CMAKE_SOURCE_DIR}/model.geom@model.geom"
+    "--preload-file=${CMAKE_SOURCE_DIR}/tree.geom@tree.geom"
 )
 
 target_compile_definitions(my_web_app PRIVATE EMSCRIPTEN)

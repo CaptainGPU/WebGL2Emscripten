@@ -11,6 +11,47 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+#define TINYOBJLOADER_IMPLEMENTATION
+#include "tiny_obj_loader.h"
+
+std::vector<float> objVertices;
+std::vector<unsigned int> objIndices;
+
+void loadOBJ(const std::string& path) {
+    tinyobj::attrib_t attrib;
+    std::vector<tinyobj::shape_t> shapes;
+    std::vector<tinyobj::material_t> materials;
+    std::string warn, err;
+
+    if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, path.c_str())) {
+        printf("Error OBJ: %s\n", err.c_str());
+        return;
+    }
+
+    for (const auto& shape : shapes) {
+        for (const auto& index : shape.mesh.indices) {
+            // Позиції (x, y, z)
+            objVertices.push_back(attrib.vertices[3 * index.vertex_index + 0]);
+            objVertices.push_back(attrib.vertices[3 * index.vertex_index + 1]);
+            objVertices.push_back(attrib.vertices[3 * index.vertex_index + 2]);
+
+            // Кольори (якщо немає в OBJ, ставимо білий)
+            objVertices.push_back(1.0f); objVertices.push_back(1.0f); objVertices.push_back(1.0f);
+
+            // UV-координати (u, v)
+            if (index.texcoord_index >= 0) {
+                objVertices.push_back(attrib.texcoords[2 * index.texcoord_index + 0]);
+                objVertices.push_back(attrib.texcoords[2 * index.texcoord_index + 1]);
+            } else {
+                objVertices.push_back(0.0f); objVertices.push_back(0.0f);
+            }
+            
+            objIndices.push_back(objIndices.size());
+        }
+    }
+    printf("Model loaded! Vertices: %zu\n", objVertices.size() / 8);
+}
+
 std::string readFile(const std::string& filePath) {
     std::ifstream file(filePath);
     if (!file.is_open()) {
@@ -159,10 +200,12 @@ void initBuffers()
     glBindVertexArray(VAO);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    //glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, objVertices.size() * sizeof(float), objVertices.data(), GL_STATIC_DRAW);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    //glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, objIndices.size() * sizeof(unsigned int), objIndices.data(), GL_STATIC_DRAW);
 
     GLsizei stride = 8 * sizeof(float);
 
@@ -317,7 +360,8 @@ EM_BOOL render_frame(double time, void* userdata)
     int indexCount = sizeof(indices) / sizeof(indices[0]);
     
     glBindVertexArray(VAO);
-    glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
+    //glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_TRIANGLES, objIndices.size(), GL_UNSIGNED_INT, 0);
 
     return true;
 }
@@ -354,11 +398,12 @@ int main()
 
     printf("WebGL initialized!!!\n");
 
+    loadOBJ("tree.geom");
     initShaders();
     initBuffers();
     initTexture();
 
     emscripten_request_animation_frame_loop(render_frame, nullptr);
-    
+
     return 0;
 }

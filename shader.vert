@@ -17,7 +17,7 @@ void main() {
     mat3 rotY = mat3(c, 0, s, 0, 1, 0, -s, 0, c);
     mat3 rotX = mat3(1, 0, 0, 0, c, -s, 0, s, c);
     
-    vec3 rotatedPos = rotX * (rotY * aPos);
+    vec3 rotatedPos = /*rotX **/ (rotY * aPos);
     
     gl_Position = uProjection * uModel * vec4(rotatedPos, 1.0);
     ourColor = aColor;
