@@ -140,7 +140,7 @@ void initTexture() {
 
     int width, height, nrChannels;
 
-    unsigned char *data = stbi_load("texture.png", &width, &height, &nrChannels, 0);
+    unsigned char *data = stbi_load("tree.tga", &width, &height, &nrChannels, 0);
 
     if (data) {
         GLenum format = (nrChannels == 4) ? GL_RGBA : GL_RGB;
@@ -373,6 +373,7 @@ int main()
     EmscriptenWebGLContextAttributes attr;
     attr.majorVersion = 2;
     attr.minorVersion = 0;
+    attr.depth = EM_TRUE;
 
     EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attr);
 
