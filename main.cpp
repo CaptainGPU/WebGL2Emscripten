@@ -128,7 +128,7 @@ GLuint VAO, VBO, EBO, textureID;
 //     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 // }
 
-void initTexture() {
+void initTexture(const char* texturePath) {
     glGenTextures(1, &textureID);
     glBindTexture(GL_TEXTURE_2D, textureID);
 
@@ -140,7 +140,8 @@ void initTexture() {
 
     int width, height, nrChannels;
 
-    unsigned char *data = stbi_load("tree.tga", &width, &height, &nrChannels, 0);
+    stbi_set_flip_vertically_on_load(true);
+    unsigned char *data = stbi_load(texturePath, &width, &height, &nrChannels, 0);
 
     if (data) {
         GLenum format = (nrChannels == 4) ? GL_RGBA : GL_RGB;
@@ -386,7 +387,7 @@ int main()
     emscripten_webgl_make_context_current(ctx);
 
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_CULL_FACE); 
+    //glEnable(GL_CULL_FACE); 
     glCullFace(GL_BACK);
 
     const GLubyte* renderer = glGetString(GL_RENDERER);
@@ -399,10 +400,10 @@ int main()
 
     printf("WebGL initialized!!!\n");
 
-    loadOBJ("tree.geom");
+    loadOBJ("ogre.geom");
     initShaders();
     initBuffers();
-    initTexture();
+    initTexture("ogre.png");
 
     emscripten_request_animation_frame_loop(render_frame, nullptr);
 
