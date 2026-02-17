@@ -14,6 +14,10 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
 
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 std::vector<float> objVertices;
 std::vector<unsigned int> objIndices;
 
@@ -35,15 +39,28 @@ void loadOBJ(const std::string& path) {
             objVertices.push_back(attrib.vertices[3 * index.vertex_index + 1]);
             objVertices.push_back(attrib.vertices[3 * index.vertex_index + 2]);
 
-            // Кольори (якщо немає в OBJ, ставимо білий)
             objVertices.push_back(1.0f); objVertices.push_back(1.0f); objVertices.push_back(1.0f);
 
-            // UV-координати (u, v)
             if (index.texcoord_index >= 0) {
                 objVertices.push_back(attrib.texcoords[2 * index.texcoord_index + 0]);
                 objVertices.push_back(attrib.texcoords[2 * index.texcoord_index + 1]);
-            } else {
+            } 
+            else 
+            {
                 objVertices.push_back(0.0f); objVertices.push_back(0.0f);
+            }
+
+            if (index.normal_index >= 0) 
+            {
+                objVertices.push_back(attrib.normals[3 * index.normal_index + 0]);
+                objVertices.push_back(attrib.normals[3 * index.normal_index + 1]);
+                objVertices.push_back(attrib.normals[3 * index.normal_index + 2]);
+            } 
+            else 
+            {
+                objVertices.push_back(0.0f); 
+                objVertices.push_back(1.0f); 
+                objVertices.push_back(0.0f);
             }
             
             objIndices.push_back(objIndices.size());
@@ -52,9 +69,11 @@ void loadOBJ(const std::string& path) {
     printf("Model loaded! Vertices: %zu\n", objVertices.size() / 8);
 }
 
-std::string readFile(const std::string& filePath) {
+std::string readFile(const std::string& filePath) 
+{
     std::ifstream file(filePath);
-    if (!file.is_open()) {
+    if (!file.is_open()) 
+    {
         printf("FAILED to open file: %s\n", filePath.c_str());
         return "";
     }
@@ -154,9 +173,10 @@ void initTexture(const char* texturePath) {
     }
 }
 
-void initShaders() {
-    std::string vertexCode = readFile("shader.vert");
-    std::string fragmentCode = readFile("shader.frag");
+GLuint createShaderProgram(const std::string& vertPath, const std::string& fragPath) 
+{
+    std::string vertexCode = readFile(vertPath);
+    std::string fragmentCode = readFile(fragPath);
 
     const char* vShaderCode = vertexCode.c_str();
     const char* fShaderCode = fragmentCode.c_str();
@@ -183,13 +203,15 @@ void initShaders() {
         printf("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n%s\n", infoLog);
     }
 
-    shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
+    GLuint program = glCreateProgram();
+    glAttachShader(program, vertexShader);
+    glAttachShader(program, fragmentShader);
+    glLinkProgram(program);
 
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
+
+    return program;
 }
 
 void initBuffers()
@@ -201,14 +223,12 @@ void initBuffers()
     glBindVertexArray(VAO);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    //glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
     glBufferData(GL_ARRAY_BUFFER, objVertices.size() * sizeof(float), objVertices.data(), GL_STATIC_DRAW);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    //glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, objIndices.size() * sizeof(unsigned int), objIndices.data(), GL_STATIC_DRAW);
 
-    GLsizei stride = 8 * sizeof(float);
+    GLsizei stride = 11 * sizeof(float);
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
     glEnableVertexAttribArray(0);
@@ -219,117 +239,118 @@ void initBuffers()
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (void*)(6 * sizeof(float)));
     glEnableVertexAttribArray(2);
 
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, stride, (void*)(8 * sizeof(float)));
+    glEnableVertexAttribArray(3);
+
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 }
 
-void set_projection_matrix(int width, int height)
-{
-    float aspect = (float)width / float(height);
-    float matrix[16] = {0};
+GLuint fbo = 0;
+GLuint textureColorBuffer = 0;
+GLuint rbo = 0;
+int currentFBOWidth = 0;
+int currentFBOHeight = 0;
 
-    matrix[0] = 1.0f;
-    matrix[5] = 1.0f;
-    matrix[10] = 1.0f;
-    matrix[15] = 1.0f;
+void initFBO(int width, int height) {
 
-    if (width >= height)
-    {
-        matrix[0] = 1.0f / aspect;
-    }
-    else
-    {
-        matrix[5] = aspect;
+    if (fbo != 0) {
+        glDeleteFramebuffers(1, &fbo);
+        glDeleteTextures(1, &textureColorBuffer);
+        glDeleteRenderbuffers(1, &rbo);
     }
 
-    int projLoc = glGetUniformLocation(shaderProgram, "uProjection");
-    glUniformMatrix4fv(projLoc, 1, GL_FALSE, matrix);
-}
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
-void set_identity(float* m) 
-{
-    for(int i=0; i<16; i++) m[i] = 0.0f;
-    m[0] = m[5] = m[10] = m[15] = 1.0f;
-}
-
-void set_rotate_model(float* m, float time) {
-    set_identity(m);
+    glGenTextures(1, &textureColorBuffer);
+    glBindTexture(GL_TEXTURE_2D, textureColorBuffer);
     
-    float s1 = sin(time);
-    float c1 = cos(time);
-    float s2 = sin(time * 0.5f);
-    float c2 = cos(time * 0.5f);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 
-    m[0] = c1;
-    m[2] = -s1;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     
-    m[5] = c2;
-    m[6] = s2;
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorBuffer, 0);
+
+    glGenRenderbuffers(1, &rbo);
+    glBindRenderbuffer(GL_RENDERBUFFER, rbo);
     
-    m[8] = s1 * c2;
-    m[9] = -s2;
-    m[10] = c1 * c2;
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height);
+    
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rbo);
 
-    m[14] = -3.0f;
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        printf("ERROR::FRAMEBUFFER:: Framebuffer is not complete!\n");
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    currentFBOWidth = width;
+    currentFBOHeight = height;
+    printf("FBO initialized/resized to: %dx%d\n", width, height);
 }
 
-void set_ortho_projection(float* m, int width, int height) {
-    set_identity(m);
-    float aspect = (float)width / (float)height;
-    if (width >= height) {
-        m[0] = 1.0f / aspect;
-    } else {
-        m[5] = aspect;
-    }
-}
+GLuint screenVAO, screenVBO;
+GLuint screenShaderProgram;
 
-void set_perspective_projection(float* m, int width, int height) {
-    float fov = 45.0f * (3.14159265f / 180.0f); 
-    float aspect = (float)width / (float)height;
-    float near = 0.1f;
-    float far = 100.0f;
+void initScreenQuads() {
+    float quadVertices[] = {
+        -1.0f,  1.0f,  0.0f, 1.0f,
+        -1.0f, -1.0f,  0.0f, 0.0f,
+         1.0f, -1.0f,  1.0f, 0.0f,
 
-    float f = 1.0f / tan(fov / 2.0f);
+        -1.0f,  1.0f,  0.0f, 1.0f,
+         1.0f, -1.0f,  1.0f, 0.0f,
+         1.0f,  1.0f,  1.0f, 1.0f
+    };
 
-    set_identity(m);
+    glGenVertexArrays(1, &screenVAO);
+    glGenBuffers(1, &screenVBO);
+    glBindVertexArray(screenVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, screenVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
 
-    m[0] = f / aspect;
-    m[5] = f;
-    m[10] = (far + near) / (near - far);
-    m[11] = -1.0f; 
-    m[14] = (2.0f * far * near) / (near - far);
-    m[15] = 0.0f;
-}
-
-void getPerspectiveMatrix(float fov, float aspect, float near, float far, float* matrix) {
-    float f = 1.0f / tan(fov / 2.0f);
-    for(int i = 0; i < 16; i++) matrix[i] = 0.0f;
-    matrix[0] = f / aspect;
-    matrix[5] = f;
-    matrix[10] = (far + near) / (near - far);
-    matrix[11] = -1.0f;
-    matrix[14] = (2.0f * far * near) / (near - far);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
 }
 
 float worldTime = .0;
+
+glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f, 3.0f);
+glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f, 0.0f);
 
 EM_BOOL render_frame(double time, void* userdata)
 {
     worldTime = (float)time / 1000.0f;
 
-    double width, height;
-    emscripten_get_element_css_size("#canvas", &width, &height);
+    double cssWidth, cssHeight;
+    emscripten_get_element_css_size("#canvas", &cssWidth, &cssHeight);
 
     double pixelRatio = emscripten_get_device_pixel_ratio();
 
-    int canvasW = (int)(width * pixelRatio);
-    int canvasH = (int)(height * pixelRatio);
+    int canvasW = (int)(cssWidth * pixelRatio);
+    int canvasH = (int)(cssHeight * pixelRatio);
 
     emscripten_set_canvas_element_size("#canvas", canvasW, canvasH);
 
+    if (canvasW != currentFBOWidth || canvasH != currentFBOHeight) {
+        initFBO(canvasW, canvasH);
+    }
+
+    // FIRST PASS
+
+    glEnable(GL_DEPTH_TEST);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
     glViewport(0, 0, canvasW, canvasH);
 
-    glClearColor(0.25f, 0.5f, 1.0f, 1.0f);
+    glm::vec3 color = glm::vec3(0.25f, 0.5f, 1.0f) * 0.25f;
+
+    glClearColor(color.r, color.g, color.b, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glUseProgram(shaderProgram);
@@ -337,32 +358,56 @@ EM_BOOL render_frame(double time, void* userdata)
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, textureID);
 
-    float projection[16];
-    float t = (float)time / 1000.0f;
+    float aspect = (float)canvasW / (float)canvasH;
+    glm::mat4 projection = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
 
-    
-    float model[16] = {
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        0, 0, -3, 1  // Z = -3
-    };
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::rotate(model, worldTime, glm::vec3(0.0f, 1.0f, 0.0f));
 
-    getPerspectiveMatrix(0.78f, (float)canvasW/canvasH, 0.1f, 100.0f, projection);
+    glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+
+    glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(model)));
 
     int modelLoc = glGetUniformLocation(shaderProgram, "uModel");
+    int viewLoc = glGetUniformLocation(shaderProgram, "uView");
     int projLoc = glGetUniformLocation(shaderProgram, "uProjection");
     int timeLoc = glGetUniformLocation(shaderProgram, "uTime");
+    int normalMatrixLoc  = glGetUniformLocation(shaderProgram, "uNormalMatrix");
 
-    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model);
-    glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection);
+    int lightPosLoc = glGetUniformLocation(shaderProgram, "uLightPos");
+    int lightColLoc = glGetUniformLocation(shaderProgram, "uLightColor");
+
+    glUniform1i(glGetUniformLocation(shaderProgram, "uTexture"), 0);
+
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
+    glUniformMatrix3fv(normalMatrixLoc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
     glUniform1f(timeLoc, worldTime);
+
+    glUniform3f(lightPosLoc, 5.0f, 5.0f, 3.0f);
+    glUniform3f(lightColLoc, 1.0f, 1.0f, 1.0f);
     
     int indexCount = sizeof(indices) / sizeof(indices[0]);
     
     glBindVertexArray(VAO);
-    //glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
     glDrawElements(GL_TRIANGLES, objIndices.size(), GL_UNSIGNED_INT, 0);
+
+    // SCREEN PASS
+
+    glDisable(GL_DEPTH_TEST);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glUseProgram(screenShaderProgram);
+    glBindVertexArray(screenVAO);
+    glUniform1i(glGetUniformLocation(screenShaderProgram, "screenTexture"), 0);
+    glActiveTexture(GL_TEXTURE0); 
+    glBindTexture(GL_TEXTURE_2D, textureColorBuffer);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
 
     return true;
 }
@@ -401,8 +446,10 @@ int main()
     printf("WebGL initialized!!!\n");
 
     loadOBJ("ogre.geom");
-    initShaders();
+    shaderProgram = createShaderProgram("shader.vert", "shader.frag");
+    screenShaderProgram = createShaderProgram("screen_shader.vert", "screen_shader.frag");
     initBuffers();
+    initScreenQuads();
     initTexture("ogre.png");
 
     emscripten_request_animation_frame_loop(render_frame, nullptr);

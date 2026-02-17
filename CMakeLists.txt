@@ -11,6 +11,8 @@ set_target_properties(my_web_app PROPERTIES
     SUFFIX ".html"
 )
 
+target_include_directories(my_web_app PRIVATE /usr/local/include)
+
 target_link_options(my_web_app PRIVATE
     #"-sFORCE_FILESYSTEM=1"
     "-sUSE_WEBGL2=1"
@@ -21,9 +23,11 @@ target_link_options(my_web_app PRIVATE
     #"--preload-file=${CMAKE_SOURCE_DIR}/texture.png@texture.png"
     "--preload-file=${CMAKE_SOURCE_DIR}/shader.vert@shader.vert"
     "--preload-file=${CMAKE_SOURCE_DIR}/shader.frag@shader.frag"
+    "--preload-file=${CMAKE_SOURCE_DIR}/screen_shader.vert@screen_shader.vert"
+    "--preload-file=${CMAKE_SOURCE_DIR}/screen_shader.frag@screen_shader.frag"
     #"--preload-file=${CMAKE_SOURCE_DIR}/model.geom@model.geom"
-    "--preload-file=${CMAKE_SOURCE_DIR}/tree.geom@tree.geom"
-    "--preload-file=${CMAKE_SOURCE_DIR}/tree.png@tree.png"
+    # "--preload-file=${CMAKE_SOURCE_DIR}/tree.geom@tree.geom"
+    # "--preload-file=${CMAKE_SOURCE_DIR}/tree.png@tree.png"
     #"--preload-file=${CMAKE_SOURCE_DIR}/tree.tga@tree.tga"
     "--preload-file=${CMAKE_SOURCE_DIR}/ogre.png@ogre.png"
     "--preload-file=${CMAKE_SOURCE_DIR}/ogre.geom@ogre.geom"
