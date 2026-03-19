@@ -18,6 +18,9 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include "imgui.h"
+#include "imgui_impl_opengl3.h"
+
 std::vector<float> objVertices;
 std::vector<unsigned int> objIndices;
 
@@ -316,15 +319,66 @@ void initScreenQuads() {
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
 }
 
+EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userData) {
+    ImGuiIO& io = ImGui::GetIO();
+    float pixelRatio = (float)emscripten_get_device_pixel_ratio();
+    
+    io.MousePos = ImVec2((float)e->targetX, (float)e->targetY);
+    
+    if (eventType == EMSCRIPTEN_EVENT_MOUSEDOWN) {
+        if (e->button == 0) io.MouseDown[0] = true;
+        if (e->button == 2) io.MouseDown[1] = true;
+    }
+    if (eventType == EMSCRIPTEN_EVENT_MOUSEUP) {
+        if (e->button == 0) io.MouseDown[0] = false;
+        if (e->button == 2) io.MouseDown[1] = false;
+    }
+    return io.WantCaptureMouse;
+}
+
+EM_BOOL wheel_callback(int eventType, const EmscriptenWheelEvent *e, void *userData) {
+    ImGuiIO& io = ImGui::GetIO();
+    io.MouseWheel += (float)-e->deltaY * 0.01f;
+    return io.WantCaptureMouse;
+}
+
+EM_BOOL touch_callback(int eventType, const EmscriptenTouchEvent *e, void *userData) {
+    ImGuiIO& io = ImGui::GetIO();
+
+    if (e->numTouches > 0) {
+        io.MousePos = ImVec2((float)e->touches[0].targetX, (float)e->touches[0].targetY);
+        
+        if (eventType == EMSCRIPTEN_EVENT_TOUCHSTART) io.MouseDown[0] = true;
+        if (eventType == EMSCRIPTEN_EVENT_TOUCHEND || eventType == EMSCRIPTEN_EVENT_TOUCHCANCEL) 
+            io.MouseDown[0] = false;
+    }
+    return io.WantCaptureMouse;
+}
+
 float worldTime = .0;
 
 glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f, 3.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f, 0.0f);
 
+float rotationSpeed = 1.0f;
+glm::vec3 lightColor = glm::vec3(1.0f, 1.0f, 1.0f);
+bool useTexture = true;
+
+const int FPS_HISTORY_SIZE = 100;
+float fpsHistory[FPS_HISTORY_SIZE] = { 0 };
+int fpsOffset = 0;
+
 EM_BOOL render_frame(double time, void* userdata)
 {
     worldTime = (float)time / 1000.0f;
+
+    static double lastTime = time;
+    double deltaTime = (time - lastTime) / 1000.0f;
+    lastTime = time;
+
+    static float currentRotation = 0.0f;
+    currentRotation += rotationSpeed * (float)deltaTime;
 
     double cssWidth, cssHeight;
     emscripten_get_element_css_size("#canvas", &cssWidth, &cssHeight);
@@ -362,7 +416,7 @@ EM_BOOL render_frame(double time, void* userdata)
     glm::mat4 projection = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
 
     glm::mat4 model = glm::mat4(1.0f);
-    model = glm::rotate(model, worldTime, glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::rotate(model, currentRotation, glm::vec3(0.0f, 1.0f, 0.0f));
 
     glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 
@@ -376,6 +430,7 @@ EM_BOOL render_frame(double time, void* userdata)
 
     int lightPosLoc = glGetUniformLocation(shaderProgram, "uLightPos");
     int lightColLoc = glGetUniformLocation(shaderProgram, "uLightColor");
+    int useTextureLoc = glGetUniformLocation(shaderProgram, "uUseTexture");
 
     glUniform1i(glGetUniformLocation(shaderProgram, "uTexture"), 0);
 
@@ -386,7 +441,8 @@ EM_BOOL render_frame(double time, void* userdata)
     glUniform1f(timeLoc, worldTime);
 
     glUniform3f(lightPosLoc, 5.0f, 5.0f, 3.0f);
-    glUniform3f(lightColLoc, 1.0f, 1.0f, 1.0f);
+    glUniform3fv(lightColLoc, 1, glm::value_ptr(lightColor));
+    glUniform1i(useTextureLoc, useTexture ? 1 : 0);
     
     int indexCount = sizeof(indices) / sizeof(indices[0]);
     
@@ -408,6 +464,51 @@ EM_BOOL render_frame(double time, void* userdata)
     glActiveTexture(GL_TEXTURE0); 
     glBindTexture(GL_TEXTURE_2D, textureColorBuffer);
     glDrawArrays(GL_TRIANGLES, 0, 6);
+
+    // IMGUI PASS
+
+    ImGui_ImplOpenGL3_NewFrame();
+
+    ImGuiIO& io = ImGui::GetIO();
+    io.DisplayFramebufferScale = ImVec2(pixelRatio, pixelRatio);
+    io.DisplaySize = ImVec2((float)canvasW/pixelRatio, (float)canvasH/pixelRatio);
+    io.DeltaTime = 1.0f / 60.0f;
+
+    ImGui::NewFrame();
+
+    ImGui::SetNextWindowSize(ImVec2(350, 0), ImGuiCond_FirstUseEver);
+
+    ImGui::Begin("Ogre Control Panel");
+    
+    ImGui::SliderFloat("Rotation Speed", &rotationSpeed, 0.0f, 5.0f);
+    
+    ImGui::ColorEdit3("Light", glm::value_ptr(lightColor), ImGuiColorEditFlags_Float);
+    
+    ImGui::Checkbox("Use Texture", &useTexture);
+
+    if (ImGui::Button("Reset Rotation")) currentRotation = 0.0f;
+
+    float currentFPS = 1.0f / (float)deltaTime;
+    fpsHistory[fpsOffset] = currentFPS;
+    fpsOffset = (fpsOffset + 1) % FPS_HISTORY_SIZE;
+
+    ImGui::Separator();
+    ImGui::Text("Performance:");
+
+    float avg = 0;
+    for (int n = 0; n < FPS_HISTORY_SIZE; n++) avg += fpsHistory[n];
+    avg /= (float)FPS_HISTORY_SIZE;
+
+    char overlay[32];
+    sprintf(overlay, "Avg: %.2f FPS", avg);
+
+    ImGui::PlotLines("##fps", fpsHistory, FPS_HISTORY_SIZE, fpsOffset, overlay, 0.0f, 120.0f, ImVec2(0, 80.0f));
+
+
+    ImGui::End();
+
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
     return true;
 }
@@ -444,6 +545,32 @@ int main()
     printf("GLSL Version: %s\n", glslVersion);
 
     printf("WebGL initialized!!!\n");
+
+    emscripten_set_mousedown_callback("#canvas", nullptr, EM_FALSE, mouse_callback);
+    emscripten_set_mouseup_callback("#canvas", nullptr, EM_FALSE, mouse_callback);
+    emscripten_set_mousemove_callback("#canvas", nullptr, EM_FALSE, mouse_callback);
+    emscripten_set_wheel_callback("#canvas", nullptr, EM_FALSE, wheel_callback);
+    emscripten_set_touchstart_callback("#canvas", nullptr, EM_FALSE, touch_callback);
+    emscripten_set_touchend_callback("#canvas", nullptr, EM_FALSE, touch_callback);
+    emscripten_set_touchmove_callback("#canvas", nullptr, EM_FALSE, touch_callback);
+    emscripten_set_touchcancel_callback("#canvas", nullptr, EM_FALSE, touch_callback);
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    io.IniFilename = nullptr;
+    
+    io.Fonts->AddFontDefault(0);
+
+    ImGui::StyleColorsDark();
+
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.WindowPadding = ImVec2(15, 15);
+    style.FramePadding = ImVec2(10, 8);
+    style.ItemSpacing = ImVec2(12, 10);
+    style.FrameRounding = 5.0f;
+
+    ImGui_ImplOpenGL3_Init("#version 300 es");
 
     loadOBJ("ogre.geom");
     shaderProgram = createShaderProgram("shader.vert", "shader.frag");

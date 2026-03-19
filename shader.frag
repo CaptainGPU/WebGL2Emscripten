@@ -9,11 +9,18 @@ in vec3 FragPos;
 uniform sampler2D uTexture;
 uniform vec3 uLightPos;
 uniform vec3 uLightColor;
+uniform bool uUseTexture;
 
 out vec4 FragColor;
 
 void main() {
     
+    vec3 baseColor = vec3(0.7);
+    if (uUseTexture) 
+    {
+        baseColor = texture(uTexture, TexCoord).rgb;
+    }
+
     float ambientStrength = 0.2;
     vec3 ambient = ambientStrength * uLightColor;
 
@@ -23,6 +30,6 @@ void main() {
     float diff = max(dot(norm, lightDir), 0.0);
     vec3 diffuse = diff * uLightColor;
 
-    vec3 result = (ambient + diffuse) * texture(uTexture, TexCoord).rgb;
+    vec3 result = (ambient + diffuse) * baseColor;
     FragColor = vec4(result, 1.0);
 }
