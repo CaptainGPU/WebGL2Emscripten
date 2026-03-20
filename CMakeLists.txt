@@ -35,7 +35,9 @@ target_link_options(my_web_app PRIVATE
     "-sUSE_WEBGL2=1"
     "-sFULL_ES3=1"
     "-sWASM=1"
-    "-O3"
+    #"-O3"
+    # "-sASSERTIONS=1"
+    # "-fsanitize=address"
     "--shell-file=${CMAKE_SOURCE_DIR}/assets/web/shell_minimal.html"
 
     "--preload-file=${CMAKE_SOURCE_DIR}/shaders/shader.vert@shader.vert"

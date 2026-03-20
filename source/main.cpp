@@ -21,6 +21,16 @@
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
 
+#ifdef NDEBUG
+    const char* buildType = "Release";
+#else
+    const char* buildType = "Debug";
+#endif
+
+#define STR_HELPER(x) #x
+#define STR(x) STR_HELPER(x)
+const char* emVersion = STR(__EMSCRIPTEN_MAJOR__) "." STR( __EMSCRIPTEN_MINOR__) "." STR(__EMSCRIPTEN_TINY__);
+
 std::vector<float> objVertices;
 std::vector<unsigned int> objIndices;
 
@@ -360,15 +370,17 @@ void ToggleFullscreen() {
     EmscriptenFullscreenChangeEvent status;
     emscripten_get_fullscreen_status(&status);
 
-    EMSCRIPTEN_RESULT result;
+    EMSCRIPTEN_RESULT result = EMSCRIPTEN_RESULT_SUCCESS;;
 
     if (status.isFullscreen)
     {
-        emscripten_exit_fullscreen();
+        printf("Exit from fullscreen\n");
+        result = emscripten_exit_fullscreen();
     }
     else
     {
-    result = emscripten_request_fullscreen("#canvas", EM_TRUE);
+        printf("Go to fullscreen\n");
+        result = emscripten_request_fullscreen("#canvas", EM_TRUE);
     }
 
     if (result != EMSCRIPTEN_RESULT_SUCCESS) 
@@ -386,10 +398,6 @@ glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f, 0.0f);
 float rotationSpeed = 1.0f;
 glm::vec3 lightColor = glm::vec3(1.0f, 1.0f, 1.0f);
 bool useTexture = true;
-
-const int FPS_HISTORY_SIZE = 100;
-float fpsHistory[FPS_HISTORY_SIZE] = { 0 };
-int fpsOffset = 0;
 
 EM_BOOL render_frame(double time, void* userdata)
 {
@@ -498,18 +506,51 @@ EM_BOOL render_frame(double time, void* userdata)
 
     ImGui::NewFrame();
 
-    ImGui::SetNextWindowSize(ImVec2(350, 0), ImGuiCond_FirstUseEver);
+    float panelWidth = 300.0f;
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2(panelWidth, io.DisplaySize.y));
 
-    ImGui::Begin("Ogre Control Panel");
+    ImGuiWindowFlags window_flags = 0;
+    window_flags |= ImGuiWindowFlags_NoTitleBar;
+    window_flags |= ImGuiWindowFlags_NoCollapse;
+    window_flags |= ImGuiWindowFlags_NoResize;
+    window_flags |= ImGuiWindowFlags_NoMove;
+    window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus;
+
+    ImGui::Begin("Control Panel", nullptr, window_flags);
+
+    if (ImGui::CollapsingHeader("Screen Metrics", ImGuiTreeNodeFlags_DefaultOpen)) 
+    {
+        ImGui::Text("Pixel Ratio: "); 
+        ImGui::SameLine(); 
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "%.2f", pixelRatio);
+        ImGui::Text("Render Buffer: %d x %d px", canvasW, canvasH);
+        ImGui::Text("CSS Size:      %.1f x %.1f pts", cssWidth, cssHeight);
+        ImGui::Text("ImGui Display: %.1f x %.1f", io.DisplaySize.x, io.DisplaySize.y);
+    }
 
     ImGui::Separator();
-    ImGui::Text("Screen Metrics:");
-    ImGui::Text("Pixel Ratio: "); 
-    ImGui::SameLine(); 
-    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "%.2f", pixelRatio);
-    ImGui::Text("Render Buffer: %d x %d px", canvasW, canvasH);
-    ImGui::Text("CSS Size:      %.1f x %.1f pts", cssWidth, cssHeight);
-    ImGui::Text("ImGui Display: %.1f x %.1f", io.DisplaySize.x, io.DisplaySize.y);
+    if (ImGui::CollapsingHeader("Build & Engine Info", ImGuiTreeNodeFlags_DefaultOpen)) 
+    {
+        ImGui::Text("Emscripten:");
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.4f, 0.7f, 1.0f, 1.0f), "%s", emVersion);
+
+        ImGui::Text("Build Configuration:");
+        ImGui::SameLine();
+        
+    #ifdef NDEBUG
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "%s", buildType);
+    #else
+        ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "%s", buildType);
+    #endif
+
+        ImGui::Text("Graphics API:");
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "WebGL 2.0 (ES 3.0)");
+
+        ImGui::Text("Build Date: %s", __DATE__);
+    }
     
     ImGui::SliderFloat("Rotation Speed", &rotationSpeed, 0.0f, 5.0f);
     
@@ -535,21 +576,20 @@ EM_BOOL render_frame(double time, void* userdata)
         ImGui::SetTooltip("Tip: Press Esc to exit fullscreen");
     }
 
-    float currentFPS = 1.0f / (float)deltaTime;
-    fpsHistory[fpsOffset] = currentFPS;
-    fpsOffset = (fpsOffset + 1) % FPS_HISTORY_SIZE;
+    ImGui::Text("Average: %.1f FPS", io.Framerate);
+    ImGui::Text("Frame Time: %.3f ms", 1000.0f / io.Framerate);
 
-    ImGui::Separator();
-    ImGui::Text("Performance:");
+    static float frameTimeHistory[100] = { 0 };
+    static int offset = 0;
 
-    float avg = 0;
-    for (int n = 0; n < FPS_HISTORY_SIZE; n++) avg += fpsHistory[n];
-    avg /= (float)FPS_HISTORY_SIZE;
+    float msec = io.DeltaTime * 1000.0f; 
+    frameTimeHistory[offset] = msec;
+    offset = (offset + 1) % 100;
 
-    char overlay[32];
-    sprintf(overlay, "Avg: %.2f FPS", avg);
+    ImGui::PlotLines("##FrameTime", frameTimeHistory, 100, offset, 
+                    "ms/frame", 0.0f, 33.3f, ImVec2(-1, 50));
 
-    ImGui::PlotLines("##fps", fpsHistory, FPS_HISTORY_SIZE, fpsOffset, overlay, 0.0f, 120.0f, ImVec2(0, 80.0f));
+    ImGui::Text("Max Scale: 33ms (30 FPS)");
 
 
     ImGui::End();
