@@ -36,18 +36,21 @@ target_link_options(my_web_app PRIVATE
     "-sFULL_ES3=1"
     "-sWASM=1"
     "-O3"
-    "--shell-file=${CMAKE_SOURCE_DIR}/shell_minimal.html"
-    #"--preload-file=${CMAKE_SOURCE_DIR}/texture.png@texture.png"
-    "--preload-file=${CMAKE_SOURCE_DIR}/shader.vert@shader.vert"
-    "--preload-file=${CMAKE_SOURCE_DIR}/shader.frag@shader.frag"
-    "--preload-file=${CMAKE_SOURCE_DIR}/screen_shader.vert@screen_shader.vert"
-    "--preload-file=${CMAKE_SOURCE_DIR}/screen_shader.frag@screen_shader.frag"
-    #"--preload-file=${CMAKE_SOURCE_DIR}/model.geom@model.geom"
-    # "--preload-file=${CMAKE_SOURCE_DIR}/tree.geom@tree.geom"
-    # "--preload-file=${CMAKE_SOURCE_DIR}/tree.png@tree.png"
-    #"--preload-file=${CMAKE_SOURCE_DIR}/tree.tga@tree.tga"
-    "--preload-file=${CMAKE_SOURCE_DIR}/ogre.png@ogre.png"
-    "--preload-file=${CMAKE_SOURCE_DIR}/ogre.geom@ogre.geom"
+    "--shell-file=${CMAKE_SOURCE_DIR}/assets/web/shell_minimal.html"
+
+    "--preload-file=${CMAKE_SOURCE_DIR}/shaders/shader.vert@shader.vert"
+    "--preload-file=${CMAKE_SOURCE_DIR}/shaders/shader.frag@shader.frag"
+    "--preload-file=${CMAKE_SOURCE_DIR}/shaders/screen_shader.vert@screen_shader.vert"
+    "--preload-file=${CMAKE_SOURCE_DIR}/shaders/screen_shader.frag@screen_shader.frag"
+
+    "--preload-file=${CMAKE_SOURCE_DIR}/assets/textures/ogre.png@ogre.png"
+    # "--preload-file=${CMAKE_SOURCE_DIR}/assets/textures/texture.png@texture.png"
+    # "--preload-file=${CMAKE_SOURCE_DIR}/assets/textures/tree.png@tree.png"
+    # "--preload-file=${CMAKE_SOURCE_DIR}/assets/textures/tree.tga@tree.tga"
+    
+    "--preload-file=${CMAKE_SOURCE_DIR}/assets/models/ogre.geom@ogre.geom"
+    # "--preload-file=${CMAKE_SOURCE_DIR}/assets/models/model.geom@model.geom"
+    # "--preload-file=${CMAKE_SOURCE_DIR}/assets/models/tree.geom@tree.geom"
 )
 
 target_compile_definitions(my_web_app PRIVATE EMSCRIPTEN)
