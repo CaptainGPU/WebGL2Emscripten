@@ -399,6 +399,10 @@ float rotationSpeed = 1.0f;
 glm::vec3 lightColor = glm::vec3(1.0f, 1.0f, 1.0f);
 bool useTexture = true;
 
+const int FPS_HISTORY_SIZE = 100;
+float fpsHistory[FPS_HISTORY_SIZE] = { 0 };
+int fpsOffset = 0;
+
 EM_BOOL render_frame(double time, void* userdata)
 {
     worldTime = (float)time / 1000.0f;
@@ -576,20 +580,21 @@ EM_BOOL render_frame(double time, void* userdata)
         ImGui::SetTooltip("Tip: Press Esc to exit fullscreen");
     }
 
-    ImGui::Text("Average: %.1f FPS", io.Framerate);
-    ImGui::Text("Frame Time: %.3f ms", 1000.0f / io.Framerate);
+    float currentFPS = 1.0f / (float)deltaTime;
+    fpsHistory[fpsOffset] = currentFPS;
+    fpsOffset = (fpsOffset + 1) % FPS_HISTORY_SIZE;
 
-    static float frameTimeHistory[100] = { 0 };
-    static int offset = 0;
+    ImGui::Separator();
+    ImGui::Text("Performance:");
 
-    float msec = io.DeltaTime * 1000.0f; 
-    frameTimeHistory[offset] = msec;
-    offset = (offset + 1) % 100;
+    float avg = 0;
+    for (int n = 0; n < FPS_HISTORY_SIZE; n++) avg += fpsHistory[n];
+    avg /= (float)FPS_HISTORY_SIZE;
 
-    ImGui::PlotLines("##FrameTime", frameTimeHistory, 100, offset, 
-                    "ms/frame", 0.0f, 33.3f, ImVec2(-1, 50));
+    char overlay[32];
+    sprintf(overlay, "Avg: %.2f FPS", avg);
 
-    ImGui::Text("Max Scale: 33ms (30 FPS)");
+    ImGui::PlotLines("##fps", fpsHistory, FPS_HISTORY_SIZE, fpsOffset, overlay, 0.0f, 120.0f, ImVec2(0, 80.0f));
 
 
     ImGui::End();
