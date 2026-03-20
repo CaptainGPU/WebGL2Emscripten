@@ -4,25 +4,28 @@ project(EmscriptenWebGL2)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(EXTERNAL_DIR "${CMAKE_SOURCE_DIR}/thirdparty")
+
 set(IMGUI_SOURCES
-    imgui/imgui.cpp
-    imgui/imgui_draw.cpp
-    imgui/imgui_tables.cpp
-    imgui/imgui_widgets.cpp
-    imgui/backends/imgui_impl_opengl3.cpp
+    "${EXTERNAL_DIR}/imgui/imgui.cpp"
+    "${EXTERNAL_DIR}/imgui/imgui_draw.cpp"
+    "${EXTERNAL_DIR}/imgui/imgui_tables.cpp"
+    "${EXTERNAL_DIR}/imgui/imgui_widgets.cpp"
+    "${EXTERNAL_DIR}/imgui/backends/imgui_impl_opengl3.cpp"
 )
 
 add_executable(my_web_app main.cpp ${IMGUI_SOURCES})
 
+target_include_directories(my_web_app PRIVATE 
+    "${CMAKE_SOURCE_DIR}"
+    "${EXTERNAL_DIR}/imgui"
+    "${EXTERNAL_DIR}/imgui/backends"
+    "${EXTERNAL_DIR}"
+)
+
 set_target_properties(my_web_app PROPERTIES 
     OUTPUT_NAME "index"
     SUFFIX ".html"
-)
-
-target_include_directories(my_web_app PRIVATE 
-    /usr/local/include
-    ${CMAKE_SOURCE_DIR}/imgui
-    ${CMAKE_SOURCE_DIR}/imgui/backends
 )
 
 target_link_options(my_web_app PRIVATE

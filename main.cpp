@@ -355,6 +355,28 @@ EM_BOOL touch_callback(int eventType, const EmscriptenTouchEvent *e, void *userD
     return io.WantCaptureMouse;
 }
 
+void ToggleFullscreen() {
+    
+    EmscriptenFullscreenChangeEvent status;
+    emscripten_get_fullscreen_status(&status);
+
+    EMSCRIPTEN_RESULT result;
+
+    if (status.isFullscreen)
+    {
+        emscripten_exit_fullscreen();
+    }
+    else
+    {
+    result = emscripten_request_fullscreen("#canvas", EM_TRUE);
+    }
+
+    if (result != EMSCRIPTEN_RESULT_SUCCESS) 
+    {
+        printf("Fullscreen request failed with code: %d\n", result);
+    }
+}
+
 float worldTime = .0;
 
 glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f, 3.0f);
@@ -479,6 +501,15 @@ EM_BOOL render_frame(double time, void* userdata)
     ImGui::SetNextWindowSize(ImVec2(350, 0), ImGuiCond_FirstUseEver);
 
     ImGui::Begin("Ogre Control Panel");
+
+    ImGui::Separator();
+    ImGui::Text("Screen Metrics:");
+    ImGui::Text("Pixel Ratio: "); 
+    ImGui::SameLine(); 
+    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "%.2f", pixelRatio);
+    ImGui::Text("Render Buffer: %d x %d px", canvasW, canvasH);
+    ImGui::Text("CSS Size:      %.1f x %.1f pts", cssWidth, cssHeight);
+    ImGui::Text("ImGui Display: %.1f x %.1f", io.DisplaySize.x, io.DisplaySize.y);
     
     ImGui::SliderFloat("Rotation Speed", &rotationSpeed, 0.0f, 5.0f);
     
@@ -487,6 +518,22 @@ EM_BOOL render_frame(double time, void* userdata)
     ImGui::Checkbox("Use Texture", &useTexture);
 
     if (ImGui::Button("Reset Rotation")) currentRotation = 0.0f;
+
+    ImGui::Separator();
+    EmscriptenFullscreenChangeEvent fsStatus;
+    emscripten_get_fullscreen_status(&fsStatus);
+
+    const char* buttonLabel = fsStatus.isFullscreen ? "Exit Fullscreen" : "Go Fullscreen";
+
+    if (ImGui::Button(buttonLabel, ImVec2(-1, 40))) \
+    {
+        ToggleFullscreen();
+    }
+
+    if (ImGui::IsItemHovered()) 
+    {
+        ImGui::SetTooltip("Tip: Press Esc to exit fullscreen");
+    }
 
     float currentFPS = 1.0f / (float)deltaTime;
     fpsHistory[fpsOffset] = currentFPS;
