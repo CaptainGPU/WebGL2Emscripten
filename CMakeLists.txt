@@ -4,6 +4,7 @@ project(EmscriptenWebGL2)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(SOURCE_DIR "${CMAKE_SOURCE_DIR}/source")
 set(EXTERNAL_DIR "${CMAKE_SOURCE_DIR}/thirdparty")
 
 set(IMGUI_SOURCES
@@ -14,9 +15,10 @@ set(IMGUI_SOURCES
     "${EXTERNAL_DIR}/imgui/backends/imgui_impl_opengl3.cpp"
 )
 
-add_executable(my_web_app main.cpp ${IMGUI_SOURCES})
+add_executable(my_web_app "${SOURCE_DIR}/main.cpp" ${IMGUI_SOURCES})
 
 target_include_directories(my_web_app PRIVATE 
+    "${SOURCE_DIR}"
     "${CMAKE_SOURCE_DIR}"
     "${EXTERNAL_DIR}/imgui"
     "${EXTERNAL_DIR}/imgui/backends"
