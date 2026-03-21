@@ -17,12 +17,17 @@ set(IMGUI_SOURCES
     "${EXTERNAL_DIR}/imgui/backends/imgui_impl_opengl3.cpp"
 )
 
-add_executable(my_web_app "${SOURCE_DIR}/main.cpp" ${IMGUI_SOURCES})
+add_executable(my_web_app)
 
 target_sources(my_web_app PRIVATE 
-    "${SOURCE_DIR}/main.cpp "
-    "${SOURCE_DIR}/renderer/Camera.h"
-    "${SOURCE_DIR}/renderer/Transform.h"
+    "${SOURCE_DIR}/main.cpp"
+
+    "${SOURCE_DIR}/core/window.cpp"
+
+    "${SOURCE_DIR}/renderer/camera.h"
+    "${SOURCE_DIR}/renderer/transform.h"
+
+    ${IMGUI_SOURCES}
 )
 
 target_include_directories(my_web_app PRIVATE 

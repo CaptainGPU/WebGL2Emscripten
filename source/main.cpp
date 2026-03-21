@@ -23,10 +23,12 @@
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
 
-#include "renderer/camera.h"
+#include "source/renderer/camera.h"
+#include "source/core/windows.h"
 
 Camera g_camera;
 Transform g_ogreTransform;
+Window g_window;
 
 #ifdef NDEBUG
     const char* buildType = "Release";
@@ -426,15 +428,15 @@ EM_BOOL render_frame(double time, void* userdata)
     static float currentRotation = 0.0f;
     currentRotation += rotationSpeed * (float)deltaTime;
 
-    double cssWidth, cssHeight;
-    emscripten_get_element_css_size("#canvas", &cssWidth, &cssHeight);
+    g_window.poolEvents();
 
-    double pixelRatio = emscripten_get_device_pixel_ratio();
+    int cssWidth = g_window.getWidth();
+    int cssHeight = g_window.getHeight();
 
-    int canvasW = (int)(cssWidth * pixelRatio);
-    int canvasH = (int)(cssHeight * pixelRatio);
+    double pixelRatio = g_window.getDevicePixelRatio();
 
-    emscripten_set_canvas_element_size("#canvas", canvasW, canvasH);
+    int canvasW = g_window.getFramebufferWidth();
+    int canvasH = g_window.getFramebufferHeight();
 
     if (canvasW != currentFBOWidth || canvasH != currentFBOHeight) {
         initFBO(canvasW, canvasH);
@@ -462,7 +464,7 @@ EM_BOOL render_frame(double time, void* userdata)
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, textureID);
 
-    float aspect = (float)canvasW / (float)canvasH;
+    float aspect = g_window.getAspectRatio();
     glm::mat4 projection = g_camera.getProjectionMatrix(aspect);
     glm::mat4 view = g_camera.getViewMatrix();
 
@@ -519,7 +521,7 @@ EM_BOOL render_frame(double time, void* userdata)
 
     ImGuiIO& io = ImGui::GetIO();
     io.DisplayFramebufferScale = ImVec2(pixelRatio, pixelRatio);
-    io.DisplaySize = ImVec2((float)canvasW/pixelRatio, (float)canvasH/pixelRatio);
+    io.DisplaySize = ImVec2(cssWidth, cssHeight);
     io.DeltaTime = 1.0f / 60.0f;
 
     ImGui::NewFrame();
@@ -543,7 +545,7 @@ EM_BOOL render_frame(double time, void* userdata)
         ImGui::SameLine(); 
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "%.2f", pixelRatio);
         ImGui::Text("Render Buffer: %d x %d px", canvasW, canvasH);
-        ImGui::Text("CSS Size:      %.1f x %.1f pts", cssWidth, cssHeight);
+        ImGui::Text("CSS Size:      %.1f x %.1f pts", (float)cssWidth, (float)cssHeight);
         ImGui::Text("ImGui Display: %.1f x %.1f", io.DisplaySize.x, io.DisplaySize.y);
     }
 
