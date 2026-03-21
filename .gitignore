@@ -19,3 +19,16 @@ Thumbs.db
 *.o
 *.a
 *.exe
+
+# clangd & language server
+.cache/
+compile_commands.json
+.clangd
+
+# Emscripten / CMake outputs
+*.js
+*.data
+*.worker.js
+*.html
+
+index.*

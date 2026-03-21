@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
 project(EmscriptenWebGL2)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -16,6 +18,12 @@ set(IMGUI_SOURCES
 )
 
 add_executable(my_web_app "${SOURCE_DIR}/main.cpp" ${IMGUI_SOURCES})
+
+target_sources(my_web_app PRIVATE 
+    "${SOURCE_DIR}/main.cpp "
+    "${SOURCE_DIR}/renderer/Camera.h"
+    "${SOURCE_DIR}/renderer/Transform.h"
+)
 
 target_include_directories(my_web_app PRIVATE 
     "${SOURCE_DIR}"

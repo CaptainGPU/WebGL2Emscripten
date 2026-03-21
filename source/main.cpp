@@ -1,3 +1,5 @@
+#include "glm/fwd.hpp"
+#include "renderer/transform.h"
 #include <iostream>
 #include <emscripten.h>
 #include <emscripten/html5.h>
@@ -20,6 +22,11 @@
 
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
+
+#include "renderer/camera.h"
+
+Camera g_camera;
+Transform g_ogreTransform;
 
 #ifdef NDEBUG
     const char* buildType = "Release";
@@ -391,9 +398,14 @@ void ToggleFullscreen() {
 
 float worldTime = .0;
 
-glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f, 3.0f);
-glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f, 0.0f);
+void initScene()
+{
+    g_camera.transform.position = glm::vec3(0.0f, 0.0f, 5.0f);
+    g_camera.transform.rotation = glm::vec3(0.0f, -90.0f, 0.0f);
+
+    g_ogreTransform.position = glm::vec3(0.0f, 0.0f, 0.0f);
+    g_ogreTransform.scale = glm::vec3(1.0f);
+}
 
 float rotationSpeed = 1.0f;
 glm::vec3 lightColor = glm::vec3(1.0f, 1.0f, 1.0f);
@@ -428,6 +440,10 @@ EM_BOOL render_frame(double time, void* userdata)
         initFBO(canvasW, canvasH);
     }
 
+    // Update
+
+    g_ogreTransform.rotation.y += 0.5f;
+
     // FIRST PASS
 
     glEnable(GL_DEPTH_TEST);
@@ -447,12 +463,10 @@ EM_BOOL render_frame(double time, void* userdata)
     glBindTexture(GL_TEXTURE_2D, textureID);
 
     float aspect = (float)canvasW / (float)canvasH;
-    glm::mat4 projection = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
+    glm::mat4 projection = g_camera.getProjectionMatrix(aspect);
+    glm::mat4 view = g_camera.getViewMatrix();
 
-    glm::mat4 model = glm::mat4(1.0f);
-    model = glm::rotate(model, currentRotation, glm::vec3(0.0f, 1.0f, 0.0f));
-
-    glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+    glm::mat4 model = g_ogreTransform.getModelMatrix();
 
     glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(model)));
 
@@ -670,6 +684,8 @@ int main()
     initBuffers();
     initScreenQuads();
     initTexture("ogre.png");
+
+    initScene();
 
     emscripten_request_animation_frame_loop(render_frame, nullptr);
 
