@@ -21,6 +21,6 @@ public:
 private:
     int m_width = 0;
     int m_height = 0;
-    int m_fbWidth = 0; // Реальні пікселі
+    int m_fbWidth = 0;
     int m_fbHeight = 0;
 };

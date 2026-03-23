@@ -23,6 +23,7 @@ target_sources(my_web_app PRIVATE
     "${SOURCE_DIR}/main.cpp"
 
     "${SOURCE_DIR}/core/window.cpp"
+    "${SOURCE_DIR}/core/application.cpp"
 
     "${SOURCE_DIR}/renderer/camera.h"
     "${SOURCE_DIR}/renderer/transform.h"
