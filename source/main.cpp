@@ -1,4 +1,3 @@
-#include "glm/fwd.hpp"
 #include "renderer/transform.h"
 #include <iostream>
 #include <emscripten.h>
@@ -428,7 +427,7 @@ EM_BOOL render_frame(double time, void* userdata)
     static float currentRotation = 0.0f;
     currentRotation += rotationSpeed * (float)deltaTime;
 
-    g_window.poolEvents();
+    g_window.pollEvents();
 
     int cssWidth = g_window.getWidth();
     int cssHeight = g_window.getHeight();
@@ -624,6 +623,11 @@ EM_BOOL render_frame(double time, void* userdata)
 int main()
 {
     printf("Start test WebGL 2\n");
+
+    if (!g_window.init("#canvas")) 
+    {
+        return -1;
+    }
 
     EmscriptenWebGLContextAttributes attr;
     attr.majorVersion = 2;

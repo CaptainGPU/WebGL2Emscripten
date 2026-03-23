@@ -1,11 +1,22 @@
 #include "source/core/windows.h"
 
-Window::Window()
-{
-    poolEvents();
+#include <iostream>
+
+bool Window::init(const char* elementId) {
+
+    double cssW, cssH;
+    EMSCRIPTEN_RESULT res = emscripten_get_element_css_size(elementId, &cssW, &cssH);
+    
+    if (res < 0) {
+        printf("Failed to find canvas element: %s\n", elementId);
+        return false;
+    }
+
+    pollEvents();
+    return true;
 }
 
-void Window::poolEvents()
+void Window::pollEvents()
 {
     double cssW, cssH;
     emscripten_get_element_css_size("#canvas", &cssW, &cssH);

@@ -5,7 +5,9 @@
 class Window 
 {
 public:
-    Window();
+    Window() = default;
+
+    bool init(const char* elementId);
 
     int getWidth() const;
     int getHeight() const;
@@ -13,7 +15,7 @@ public:
     int getFramebufferWidth() const { return m_fbWidth; }
     int getFramebufferHeight() const { return m_fbHeight; }
 
-    void poolEvents();
+    void pollEvents();
     double getDevicePixelRatio() const;
 
 private:
