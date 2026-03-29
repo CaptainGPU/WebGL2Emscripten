@@ -36,6 +36,8 @@ target_sources(my_web_app PRIVATE
     "${SOURCE_DIR}/renderer/shader.cpp"
     "${SOURCE_DIR}/renderer/texture.h"
     "${SOURCE_DIR}/renderer/texture.cpp"
+    "${SOURCE_DIR}/renderer/fbo.h"
+    "${SOURCE_DIR}/renderer/fbo.cpp"
 
     ${IMGUI_SOURCES}
 )

@@ -103,6 +103,11 @@ bool Application::init()
     initScreenQuads();
     //initTexture("ogre.png");
 
+    m_currentFBOWidth = m_window.getWidth();
+    m_currentFBOHeight = m_window.getHeight();
+
+    m_fbo = std::make_unique<Framebuffer>(m_currentFBOWidth, m_currentFBOHeight);
+
     m_mainShader = std::make_unique<Shader>("shader.vert", "shader.frag");
     m_ogreMesh = std::make_unique<Mesh>(objVertices, objIndices);
     m_texture = std::make_unique<Texture>("ogre.png");
@@ -133,7 +138,7 @@ void Application::update(float dt)
     m_fpsHistory[m_fpsOffset] = currentFPS;
     m_fpsOffset = (m_fpsOffset + 1) % FPS_HISTORY_SIZE;
 
-    m_ogreTransform.rotation.y += m_rotationSpeed * dt;
+    m_ogre->transform.rotation.y += m_rotationSpeed * dt;
 }
 
 void Application::render()
@@ -148,7 +153,10 @@ void Application::render()
 
     if (canvasW != m_currentFBOWidth || canvasH != m_currentFBOHeight) 
     {
-        initFBO(canvasW, canvasH);
+        m_currentFBOWidth = canvasW;
+        m_currentFBOHeight = canvasH;
+
+        m_fbo->resize(m_currentFBOWidth, m_currentFBOHeight);
     }
 
 
@@ -156,7 +164,7 @@ void Application::render()
 
     glEnable(GL_DEPTH_TEST);
 
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    m_fbo->bind();
 
     glViewport(0, 0, canvasW, canvasH);
 
@@ -173,11 +181,11 @@ void Application::render()
 
     m_ogre->draw(view, projection);
 
+    m_fbo->unbind();
+
     // SCREEN PASS
 
     glDisable(GL_DEPTH_TEST);
-
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -186,7 +194,7 @@ void Application::render()
     glBindVertexArray(screenVAO);
     glUniform1i(glGetUniformLocation(screenShaderProgram, "screenTexture"), 0);
     glActiveTexture(GL_TEXTURE0); 
-    glBindTexture(GL_TEXTURE_2D, textureColorBuffer);
+    m_fbo->getColorTexture()->bind(0);
     glDrawArrays(GL_TRIANGLES, 0, 6);
 
     // IMGUI PASS
@@ -247,10 +255,6 @@ void Application::render()
     }
     
     ImGui::SliderFloat("Rotation Speed", &m_rotationSpeed, 0.0f, 100.0f);
-    
-    ImGui::ColorEdit3("Light", glm::value_ptr(m_lightColor), ImGuiColorEditFlags_Float);
-    
-    ImGui::Checkbox("Use Texture", &m_useTexture);
 
     ImGui::Separator();
     EmscriptenFullscreenChangeEvent fsStatus;
@@ -441,73 +445,6 @@ void Application::initScreenQuads()
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-}
-
-void Application::initTexture(const char* texturePath)
-{
-    glGenTextures(1, &textureID);
-    glBindTexture(GL_TEXTURE_2D, textureID);
-
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-    int width, height, nrChannels;
-
-    stbi_set_flip_vertically_on_load(true);
-    unsigned char *data = stbi_load(texturePath, &width, &height, &nrChannels, 0);
-
-    if (data) 
-    {
-        GLenum format = (nrChannels == 4) ? GL_RGBA : GL_RGB;
-        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-        stbi_image_free(data);
-        printf("Texture loaded successfully: %dx%d\n", width, height);
-    } else {
-        printf("Failed to load texture. Reason: %s\n", stbi_failure_reason());
-    }
-}
-
-void Application::initFBO(int width, int height)
-{
-    if (fbo != 0) {
-        glDeleteFramebuffers(1, &fbo);
-        glDeleteTextures(1, &textureColorBuffer);
-        glDeleteRenderbuffers(1, &rbo);
-    }
-    printf("initFBO\n");
-
-    glGenFramebuffers(1, &fbo);
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-
-    glGenTextures(1, &textureColorBuffer);
-    glBindTexture(GL_TEXTURE_2D, textureColorBuffer);
-    
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorBuffer, 0);
-
-    glGenRenderbuffers(1, &rbo);
-    glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-    
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height);
-    
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rbo);
-
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-        printf("ERROR::FRAMEBUFFER:: Framebuffer is not complete!\n");
-
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    m_currentFBOWidth = width;
-    m_currentFBOHeight = height;
-    printf("FBO initialized/resized to: %dx%d\n", width, height);
 }
 
 void Application::toggleFullscreen()

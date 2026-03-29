@@ -7,6 +7,7 @@
 #include "renderer/shader.h"
 #include "renderer/mesh.h"
 #include "renderer/texture.h"
+#include "renderer/fbo.h"
 
 #include <emscripten.h>
 #include <string>
@@ -36,14 +37,13 @@ private:
     GLuint createShaderProgram(const std::string& vertPath, const std::string& fragPath);
     std::string readFile(const std::string& filePath);
     void initScreenQuads();
-    void initTexture(const char* texturePath);
-    void initFBO(int width, int height);
     void toggleFullscreen();
 
     std::unique_ptr<Shader> m_mainShader;
     std::unique_ptr<Mesh> m_ogreMesh;
     std::unique_ptr<Entity> m_ogre;
     std::unique_ptr<Texture> m_texture;
+    std::unique_ptr<Framebuffer> m_fbo;
 
 private:
     float m_worldTime = 0.0f;
@@ -57,20 +57,12 @@ private:
     float m_fpsHistory[FPS_HISTORY_SIZE] = { 0 };
     int m_fpsOffset = 0;
 
-    GLuint fbo = 0;
-    GLuint textureColorBuffer = 0;
-    GLuint rbo = 0;
-
-
 private:
     std::vector<float> objVertices;
     std::vector<unsigned int> objIndices;
     GLuint screenVAO, screenVBO;
     GLuint screenShaderProgram;
-
-    GLuint textureID;
-
-
+    
 private:
 
     static void mainLoop(void* arg);
