@@ -99,9 +99,7 @@ bool Application::init()
     initImGui();
 
     loadOBJ("ogre.geom");
-    screenShaderProgram = createShaderProgram("screen_shader.vert", "screen_shader.frag");
     initScreenQuads();
-    //initTexture("ogre.png");
 
     m_currentFBOWidth = m_window.getWidth();
     m_currentFBOHeight = m_window.getHeight();
@@ -109,6 +107,8 @@ bool Application::init()
     m_fbo = std::make_unique<Framebuffer>(m_currentFBOWidth, m_currentFBOHeight);
 
     m_mainShader = std::make_unique<Shader>("shader.vert", "shader.frag");
+    m_screenShader = std::make_unique<Shader>("screen_shader.vert", "screen_shader.frag");
+
     m_ogreMesh = std::make_unique<Mesh>(objVertices, objIndices);
     m_texture = std::make_unique<Texture>("ogre.png");
 
@@ -126,9 +126,6 @@ void Application::initScene()
 {
     m_camera.transform.position = {0.0f, 0.0f, 5.0f};
     m_camera.transform.rotation = {0.0f, -90.0f, 0.0f};
-    
-    m_ogreTransform.scale = {1.0f, 1.0f, 1.0f};
-    m_ogreTransform.position = {0.0f, 0.0f, 0.0f};
 }
 
 void Application::update(float dt)
@@ -177,8 +174,6 @@ void Application::render()
     glm::mat4 projection = m_camera.getProjectionMatrix(aspect);
     glm::mat4 view = m_camera.getViewMatrix();
 
-    glm::mat4 model = m_ogreTransform.getModelMatrix();
-
     m_ogre->draw(view, projection);
 
     m_fbo->unbind();
@@ -190,12 +185,12 @@ void Application::render()
     glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    glUseProgram(screenShaderProgram);
-    glBindVertexArray(screenVAO);
-    glUniform1i(glGetUniformLocation(screenShaderProgram, "screenTexture"), 0);
-    glActiveTexture(GL_TEXTURE0); 
+
+    m_screenShader->use();
+
+    m_screenShader->setInt("screenTexture", 0);
     m_fbo->getColorTexture()->bind(0);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
+    m_screenQuad->draw();
 
     // IMGUI PASS
 
@@ -369,82 +364,21 @@ void Application::loadOBJ(const std::string& path)
     printf("Model loaded! Vertices: %zu\n", objVertices.size() / 8);
 }
 
-GLuint Application::createShaderProgram(const std::string& vertPath, const std::string& fragPath)
-{
-    std::string vertexCode = readFile(vertPath);
-    std::string fragmentCode = readFile(fragPath);
-
-    const char* vShaderCode = vertexCode.c_str();
-    const char* fShaderCode = fragmentCode.c_str();
-
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vShaderCode, nullptr);
-    glCompileShader(vertexShader);
-    
-    GLint success;
-    GLchar infoLog[512];
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-        printf("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n%s\n", infoLog);
-    }
-
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fShaderCode, nullptr);
-    glCompileShader(fragmentShader);
-    
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-        printf("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n%s\n", infoLog);
-    }
-
-    GLuint program = glCreateProgram();
-    glAttachShader(program, vertexShader);
-    glAttachShader(program, fragmentShader);
-    glLinkProgram(program);
-
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-
-    return program;
-}
-
-std::string Application::readFile(const std::string& filePath)
-{
-    std::ifstream file(filePath);
-    if (!file.is_open()) 
-    {
-        printf("FAILED to open file: %s\n", filePath.c_str());
-        return "";
-    }
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-    return buffer.str();
-}
-
 void Application::initScreenQuads()
 {
-    float quadVertices[] = {
-        -1.0f,  1.0f,  0.0f, 1.0f,
-        -1.0f, -1.0f,  0.0f, 0.0f,
-         1.0f, -1.0f,  1.0f, 0.0f,
-
-        -1.0f,  1.0f,  0.0f, 1.0f,
-         1.0f, -1.0f,  1.0f, 0.0f,
-         1.0f,  1.0f,  1.0f, 1.0f
+    std::vector<float> quadVertices = {
+        -1.0f,  1.0f, 0.0f,  0, 0, 0,  0.0f, 1.0f,  0, 0, 1,
+        -1.0f, -1.0f, 0.0f,  0, 0, 0,  0.0f, 0.0f,  0, 0, 1,
+         1.0f, -1.0f, 0.0f,  0, 0, 0,  1.0f, 0.0f,  0, 0, 1,
+         1.0f,  1.0f, 0.0f,  0, 0, 0,  1.0f, 1.0f,  0, 0, 1
     };
 
-    glGenVertexArrays(1, &screenVAO);
-    glGenBuffers(1, &screenVBO);
-    glBindVertexArray(screenVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, screenVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+    std::vector<unsigned int> quadIndices = {
+        0, 1, 2,
+        0, 2, 3
+    };
 
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+    m_screenQuad = std::make_unique<Mesh>(quadVertices, quadIndices);
 }
 
 void Application::toggleFullscreen()

@@ -34,13 +34,14 @@ private:
 
     void initImGui();
     void loadOBJ(const std::string& path);
-    GLuint createShaderProgram(const std::string& vertPath, const std::string& fragPath);
-    std::string readFile(const std::string& filePath);
     void initScreenQuads();
     void toggleFullscreen();
 
     std::unique_ptr<Shader> m_mainShader;
+    std::unique_ptr<Shader> m_screenShader;
+
     std::unique_ptr<Mesh> m_ogreMesh;
+    std::unique_ptr<Mesh> m_screenQuad;
     std::unique_ptr<Entity> m_ogre;
     std::unique_ptr<Texture> m_texture;
     std::unique_ptr<Framebuffer> m_fbo;
@@ -60,9 +61,7 @@ private:
 private:
     std::vector<float> objVertices;
     std::vector<unsigned int> objIndices;
-    GLuint screenVAO, screenVBO;
-    GLuint screenShaderProgram;
-    
+
 private:
 
     static void mainLoop(void* arg);
