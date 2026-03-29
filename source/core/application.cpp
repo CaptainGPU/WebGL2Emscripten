@@ -99,11 +99,12 @@ bool Application::init()
     initImGui();
 
     loadOBJ("ogre.geom");
-    shaderProgram = createShaderProgram("shader.vert", "shader.frag");
     screenShaderProgram = createShaderProgram("screen_shader.vert", "screen_shader.frag");
-    initBuffers();
     initScreenQuads();
     initTexture("ogre.png");
+
+    m_mainShader = std::make_unique<Shader>("shader.vert", "shader.frag");
+    m_ogreMesh = std::make_unique<Mesh>(objVertices, objIndices);
 
     initScene();
 
@@ -161,7 +162,7 @@ void Application::render()
     glClearColor(color.r, color.g, color.b, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glUseProgram(shaderProgram);
+    m_mainShader->use();
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, textureID);
@@ -171,37 +172,21 @@ void Application::render()
      glm::mat4 view = m_camera.getViewMatrix();
 
     glm::mat4 model = m_ogreTransform.getModelMatrix();
-    
-//glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, -3.0f)); // Камера в (0,0,3)
-//glm::mat4 projection = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
 
     glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(model)));
 
-    int modelLoc = glGetUniformLocation(shaderProgram, "uModel");
-    int viewLoc = glGetUniformLocation(shaderProgram, "uView");
-    int projLoc = glGetUniformLocation(shaderProgram, "uProjection");
-    int timeLoc = glGetUniformLocation(shaderProgram, "uTime");
-    int normalMatrixLoc  = glGetUniformLocation(shaderProgram, "uNormalMatrix");
+    m_mainShader->setMat4("uModel", model);
+    m_mainShader->setMat4("uView", view);
+    m_mainShader->setMat4("uProjection", projection);
+    m_mainShader->setMat3("uNormalMatrix", normalMatrix);
 
-    int lightPosLoc = glGetUniformLocation(shaderProgram, "uLightPos");
-    int lightColLoc = glGetUniformLocation(shaderProgram, "uLightColor");
-    int useTextureLoc = glGetUniformLocation(shaderProgram, "uUseTexture");
+    m_mainShader->setInt("uTexture", 0);
+    m_mainShader->setInt("uUseTexture", m_useTexture ? 1 : 0);
 
-    glUniform1i(glGetUniformLocation(shaderProgram, "uTexture"), 0);
+    m_mainShader->setVec3("uLightPos", glm::vec3(5.0f, 5.0f, 3.0f));
+    m_mainShader->setVec3("uLightColor", m_lightColor);
 
-    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-    glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
-    glUniformMatrix3fv(normalMatrixLoc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
-    glUniform1f(timeLoc, m_worldTime);
-
-    glUniform3f(lightPosLoc, 5.0f, 5.0f, 3.0f);
-    glUniform3fv(lightColLoc, 1, glm::value_ptr(m_lightColor));
-    glUniform1i(useTextureLoc, m_useTexture ? 1 : 0);
-
-    
-    glBindVertexArray(VAO);
-    glDrawElements(GL_TRIANGLES, objIndices.size(), GL_UNSIGNED_INT, 0);
+    m_ogreMesh->draw();
 
     // SCREEN PASS
 
@@ -447,38 +432,6 @@ std::string Application::readFile(const std::string& filePath)
     std::stringstream buffer;
     buffer << file.rdbuf();
     return buffer.str();
-}
-
-void Application::initBuffers()
-{
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
-
-    glBindVertexArray(VAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, objVertices.size() * sizeof(float), objVertices.data(), GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, objIndices.size() * sizeof(unsigned int), objIndices.data(), GL_STATIC_DRAW);
-
-    GLsizei stride = 11 * sizeof(float);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (void*)(6 * sizeof(float)));
-    glEnableVertexAttribArray(2);
-
-    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, stride, (void*)(8 * sizeof(float)));
-    glEnableVertexAttribArray(3);
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
 }
 
 void Application::initScreenQuads()

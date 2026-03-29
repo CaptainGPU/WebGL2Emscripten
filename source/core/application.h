@@ -3,6 +3,8 @@
 #include "core/windows.h"
 #include "renderer/camera.h"
 #include "renderer/transform.h"
+#include "renderer/shader.h"
+#include "renderer/mesh.h"
 
 #include <emscripten.h>
 #include <string>
@@ -31,11 +33,13 @@ private:
     void loadOBJ(const std::string& path);
     GLuint createShaderProgram(const std::string& vertPath, const std::string& fragPath);
     std::string readFile(const std::string& filePath);
-    void initBuffers();
     void initScreenQuads();
     void initTexture(const char* texturePath);
     void initFBO(int width, int height);
     void toggleFullscreen();
+
+    std::unique_ptr<Shader> m_mainShader;
+    std::unique_ptr<Mesh> m_ogreMesh;
 
 private:
     float m_worldTime = 0.0f;
@@ -60,8 +64,7 @@ private:
     GLuint screenVAO, screenVBO;
     GLuint screenShaderProgram;
 
-    GLuint shaderProgram;
-    GLuint VAO, VBO, EBO, textureID;
+    GLuint textureID;
 
 
 private:
