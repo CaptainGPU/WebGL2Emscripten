@@ -1,10 +1,12 @@
 #pragma once
 
 #include "core/windows.h"
+#include "core/transform.h"
+#include "scene/entity.h"
 #include "renderer/camera.h"
-#include "renderer/transform.h"
 #include "renderer/shader.h"
 #include "renderer/mesh.h"
+#include "renderer/texture.h"
 
 #include <emscripten.h>
 #include <string>
@@ -40,6 +42,8 @@ private:
 
     std::unique_ptr<Shader> m_mainShader;
     std::unique_ptr<Mesh> m_ogreMesh;
+    std::unique_ptr<Entity> m_ogre;
+    std::unique_ptr<Texture> m_texture;
 
 private:
     float m_worldTime = 0.0f;
@@ -49,7 +53,7 @@ private:
     int m_currentFBOHeight = 0;
     glm::vec3 m_lightColor = glm::vec3(1.0f, 1.0f, 1.0f);
     bool m_useTexture = true;
-    static constexpr int FPS_HISTORY_SIZE = 100; // Константа всередині класу
+    static constexpr int FPS_HISTORY_SIZE = 100;
     float m_fpsHistory[FPS_HISTORY_SIZE] = { 0 };
     int m_fpsOffset = 0;
 

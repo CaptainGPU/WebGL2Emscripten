@@ -10,7 +10,8 @@ struct Transform
     glm::vec3 rotation = { 0.0f, 0.0f, 0.0f};
     glm::vec3 scale = { 0.0f, 0.0f, 0.0f};
 
-    glm::mat4 getModelMatrix() const {
+    glm::mat4 getModelMatrix() const 
+    {
         glm::mat4 model = glm::mat4(1.0f);
         model = glm::translate(model, position);
         model = glm::rotate(model, glm::radians(rotation.x), {1, 0, 0});

@@ -24,13 +24,18 @@ target_sources(my_web_app PRIVATE
 
     "${SOURCE_DIR}/core/window.cpp"
     "${SOURCE_DIR}/core/application.cpp"
+    "${SOURCE_DIR}/core/transform.h"
+
+    "${SOURCE_DIR}/scene/entity.h"
+    "${SOURCE_DIR}/scene/entity.cpp"
 
     "${SOURCE_DIR}/renderer/camera.h"
-    "${SOURCE_DIR}/renderer/transform.h"
     "${SOURCE_DIR}/renderer/mesh.h"
     "${SOURCE_DIR}/renderer/mesh.cpp"
     "${SOURCE_DIR}/renderer/shader.h"
     "${SOURCE_DIR}/renderer/shader.cpp"
+    "${SOURCE_DIR}/renderer/texture.h"
+    "${SOURCE_DIR}/renderer/texture.cpp"
 
     ${IMGUI_SOURCES}
 )

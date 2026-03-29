@@ -101,10 +101,13 @@ bool Application::init()
     loadOBJ("ogre.geom");
     screenShaderProgram = createShaderProgram("screen_shader.vert", "screen_shader.frag");
     initScreenQuads();
-    initTexture("ogre.png");
+    //initTexture("ogre.png");
 
     m_mainShader = std::make_unique<Shader>("shader.vert", "shader.frag");
     m_ogreMesh = std::make_unique<Mesh>(objVertices, objIndices);
+    m_texture = std::make_unique<Texture>("ogre.png");
+
+    m_ogre = std::make_unique<Entity>(m_ogreMesh.get(), m_mainShader.get(), m_texture.get());
 
     initScene();
 
@@ -162,31 +165,13 @@ void Application::render()
     glClearColor(color.r, color.g, color.b, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    m_mainShader->use();
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, textureID);
-
     float aspect = m_window.getAspectRatio();
-     glm::mat4 projection = m_camera.getProjectionMatrix(aspect);
-     glm::mat4 view = m_camera.getViewMatrix();
+    glm::mat4 projection = m_camera.getProjectionMatrix(aspect);
+    glm::mat4 view = m_camera.getViewMatrix();
 
     glm::mat4 model = m_ogreTransform.getModelMatrix();
 
-    glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(model)));
-
-    m_mainShader->setMat4("uModel", model);
-    m_mainShader->setMat4("uView", view);
-    m_mainShader->setMat4("uProjection", projection);
-    m_mainShader->setMat3("uNormalMatrix", normalMatrix);
-
-    m_mainShader->setInt("uTexture", 0);
-    m_mainShader->setInt("uUseTexture", m_useTexture ? 1 : 0);
-
-    m_mainShader->setVec3("uLightPos", glm::vec3(5.0f, 5.0f, 3.0f));
-    m_mainShader->setVec3("uLightColor", m_lightColor);
-
-    m_ogreMesh->draw();
+    m_ogre->draw(view, projection);
 
     // SCREEN PASS
 
@@ -474,7 +459,8 @@ void Application::initTexture(const char* texturePath)
     stbi_set_flip_vertically_on_load(true);
     unsigned char *data = stbi_load(texturePath, &width, &height, &nrChannels, 0);
 
-    if (data) {
+    if (data) 
+    {
         GLenum format = (nrChannels == 4) ? GL_RGBA : GL_RGB;
         glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
